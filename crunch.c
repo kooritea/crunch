@@ -329,6 +329,7 @@ struct opts_struct {
   wchar_t *startstring;
   wchar_t *endstring;
   size_t duplicates[4]; /* allowed number of duplicates for each charset */
+  size_t max_total;
 
   size_t min, max;
 
@@ -2077,6 +2078,9 @@ size_t outlen; /* temp for size of narrow output string */
           if ((options.endstring != NULL) && (wcsncmp(block2,options.endstring,wcslen(options.endstring)) == 0))
             break;
 
+          if (my_thread.linetotal > options.max_total - 2) 
+            break;
+          
           outlen = make_narrow_string(gconvbuffer,block2,gconvlen);
 
           if ((my_thread.linecounter <= (linecount-1)) && (my_thread.bytecounter <= (bytecount - outlen))) { /* not time to create a new file */
@@ -2675,7 +2679,7 @@ pthread_t threads;
           i++;
         }
 
-/* uppercase */
+        /* uppercase */
         if (i < argc && argv[i]!=NULL && *argv[i] != '-') {
           if (*argv[i] != '+') {
             free(upp_charset);
@@ -2687,7 +2691,7 @@ pthread_t threads;
           }
           i++;
         }
-/* numbers */
+        /* numbers */
         if (i < argc && argv[i]!=NULL && *argv[i] != '-') {
           if (*argv[i] != '+') {
             free(num_charset);
@@ -2699,7 +2703,7 @@ pthread_t threads;
           }
           i++;
         }
-/* symbols */
+        /* symbols */
         if (i < argc && argv[i]!=NULL && *argv[i] != '-') {
           if (*argv[i] != '+') {
             free(sym_charset);
@@ -2866,6 +2870,10 @@ pthread_t threads;
       i--;
     }
 
+    if (strncmp(argv[i], "-x", 2) == 0) { /* limit out count */
+      options.max_total = (size_t)atoi(argv[i+1]);
+    }
+
     if (strncmp(argv[i], "-z", 2) == 0) {  /* compression algorithm specified */
       if (i+1 < argc) {
         compressalgo = argv[i+1];
@@ -2911,10 +2919,10 @@ pthread_t threads;
   if (startblock != NULL && endstring != NULL) {
     for (temp = 0; temp < wcslen(startblock); temp++) {
 
-/*Added by mr.atreat@gmail.com
-  The previous endstring function was broken because it used the ASCII/unicode
-  values to check if endstring was greater than startblock. This revision uses
-  the actual input charset character order to determine which is greater. */
+      /*Added by mr.atreat@gmail.com
+        The previous endstring function was broken because it used the ASCII/unicode
+        values to check if endstring was greater than startblock. This revision uses
+        the actual input charset character order to determine which is greater. */
       wchar_t startcharsrch = startblock[temp];
       wchar_t * startpos;
       startpos = wcschr(charset, startcharsrch);
@@ -2929,18 +2937,19 @@ pthread_t threads;
         fprintf(stderr,"End string must be greater than start string\n");
         exit(EXIT_FAILURE);
       }
-      if (startplace < endplace)
-	break;
+      if (startplace < endplace) {
+        break;
 
-/*Removed by mr.atreat@gmail.com
-     if (startblock[temp] > endstring[temp]) {
-        fprintf(stderr,"End string must be greater than start string\n");
-        exit(EXIT_FAILURE);
+        /*Removed by mr.atreat@gmail.com
+            if (startblock[temp] > endstring[temp]) {
+                fprintf(stderr,"End string must be greater than start string\n");
+                exit(EXIT_FAILURE);
+              }
+              if (startblock[temp] < endstring[temp])
+              exit(EXIT_FAILURE);
+              break;
+        */
       }
-      if (startblock[temp] < endstring[temp])
-       exit(EXIT_FAILURE);
-       break;
-*/
     }
   }
 
